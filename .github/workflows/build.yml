@@ -1,0 +1,47 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ windows-latest, macos-latest ]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      # 可选：如果你想要生成发布版本
+      - name: Build release
+        run: cargo build --release
+
+      # 可选：上传编译产物
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: binary-${{ matrix.os }}
+          path: |
+            target/release/${{ github.event.repository.name }}*
+            !target/release/*.d
+            !target/release/*.pdb
