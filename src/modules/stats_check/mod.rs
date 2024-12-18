@@ -26,8 +26,8 @@ mod scraping;
 const EXPORT_FILE_PATH: &str = "data/stats.csv";
 #[derive(Tabled, Serialize)]
 struct UserStats {
-    #[tabled(rename = "Address")]
-    #[serde(rename = "Address")]
+    #[tabled(rename = "Proxy Address")]
+    #[serde(rename = "Proxy Address")]
     address: String,
 
     #[tabled(rename = "USDC.e Balance")]

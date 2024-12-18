@@ -13,9 +13,11 @@ use crate::{
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Account {
-    private_key: String,
-    proxy: Option<String>,
     address: String,
+    #[serde(skip)]
+    private_key: String,
+    encrypted_private_key: String,
+    proxy: Option<String>,
     recipient_address: String,
     is_registered: bool,
     funded: bool,
@@ -63,18 +65,19 @@ where
 impl Account {
     pub fn new(
         private_key: &str,
+        encrypted_private_key: &str,
         proxy: Option<String>,
         recipient_address: Option<String>,
     ) -> Self {
         let signer =
             Arc::new(PrivateKeySigner::from_str(private_key).expect("Private key to be valid"));
         let recipient_address = recipient_address.unwrap_or(signer.address().to_string());
-
         let address = signer.address();
         let proxy_address = get_proxy_wallet_address(signer);
 
         Self {
             private_key: private_key.to_string(),
+            encrypted_private_key: encrypted_private_key.to_string(),
             proxy,
             address: address.to_string(),
             proxy_address: proxy_address.to_string(),
@@ -99,6 +102,14 @@ impl Account {
 
     pub fn signer(&self) -> Arc<PrivateKeySigner> {
         Arc::new(PrivateKeySigner::from_str(&self.private_key).unwrap())
+    }
+
+    pub fn set_private_key(&mut self, private_key: &str) {
+        self.private_key = private_key.to_string()
+    }
+
+    pub fn get_encrypted_private_key(&self) -> &str {
+        &self.encrypted_private_key
     }
 
     pub fn set_polymarket_session(&mut self, polymarket_session: &str) {

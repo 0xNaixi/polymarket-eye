@@ -8,39 +8,55 @@ use crate::{
     modules::{sell::sell_all::sell_all_open_positions, withdraw::withdraw_for_all},
 };
 use colored::Colorize;
-use dialoguer::{theme::ColorfulTheme, Select};
-
+use dialoguer::{theme::ColorfulTheme, Password, Select};
 const LOGO: &str = r#"
-    ___                                                  __
-  /'___\                                                /\ \__
- /\ \__/  _ __    __       __     ___ ___      __    ___\ \ ,_\
- \ \ ,__\/\`'__\/'__`\   /'_ `\ /' __` __`\  /'__`\/' _ `\ \ \/
-  \ \ \_/\ \ \//\ \L\.\_/\ \L\ \/\ \/\ \/\ \/\  __//\ \/\ \ \ \_
-   \ \_\  \ \_\\ \__/.\_\ \____ \ \_\ \_\ \_\ \____\ \_\ \_\ \__\
-    \/_/   \/_/ \/__/\/_/\/___L\ \/_/\/_/\/_/\/____/\/_/\/_/\/__/
-                  ___  __  /\____/
-                /'___\/\ \_\_/__/
-   ____    ___ /\ \__/\ \ ,_\ __  __  __     __    _ __    __
-  /',__\  / __`\ \ ,__\\ \ \//\ \/\ \/\ \  /'__`\ /\`'__\/'__`\
- /\__, `\/\ \L\ \ \ \_/ \ \ \\ \ \_/ \_/ \/\ \L\.\\ \ \//\  __/
- \/\____/\ \____/\ \_\   \ \__\ \___x___/'\ \__/.\_\ \_\\ \____\
-  \/___/  \/___/  \/_/    \/__/\/__//__/   \/__/\/_/\/_/ \/____/
 
-                     t.me/fragment_software
+██████╗  ██████╗ ██╗  ██╗   ██╗███╗   ███╗ █████╗ ██████╗ ██╗  ██╗███████╗████████╗    ██████╗  ██████╗ ████████╗
+██╔══██╗██╔═══██╗██║  ╚██╗ ██╔╝████╗ ████║██╔══██╗██╔══██╗██║ ██╔╝██╔════╝╚══██╔══╝    ██╔══██╗██╔═══██╗╚══██╔══╝
+██████╔╝██║   ██║██║   ╚████╔╝ ██╔████╔██║███████║██████╔╝█████╔╝ █████╗     ██║       ██████╔╝██║   ██║   ██║
+██╔═══╝ ██║   ██║██║    ╚██╔╝  ██║╚██╔╝██║██╔══██║██╔══██╗██╔═██╗ ██╔══╝     ██║       ██╔══██╗██║   ██║   ██║
+██║     ╚██████╔╝███████╗██║   ██║ ╚═╝ ██║██║  ██║██║  ██║██║  ██╗███████╗   ██║       ██████╔╝╚██████╔╝   ██║
+╚═╝      ╚═════╝ ╚══════╝╚═╝   ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝       ╚═════╝  ╚═════╝    ╚═╝
+
+                                         Author:[𝕏] @0xNaiXi
+                                         Author:[𝕏] @0xNaiXi
+                                         Author:[𝕏] @0xNaiXi
 "#;
 
 pub async fn menu() -> eyre::Result<()> {
-    async fn read_or_create_db() -> eyre::Result<Database> {
-        match Database::read().await {
+    async fn read_or_create_db(password: Option<&str>) -> eyre::Result<Database> {
+        match Database::read(password).await {
             Ok(db) => Ok(db),
-            Err(_) => Database::new().await,
+            Err(_) => Database::new(password).await,
+        }
+    }
+
+    async fn read_db(password: Option<&str>) -> eyre::Result<Database> {
+        match Database::read(password).await {
+            Ok(db) => Ok(db),
+            Err(e) => {
+                println!("{}", "✘ Failed to read database! (password is wrong?)".red());
+                Err(e)  // 直接返回错误，不创建新数据库
+            }
         }
     }
 
     let config = Config::read_default().await;
-    let logo = LOGO.red();
+    let logo = LOGO.blue();
 
     println!("{logo}");
+
+    let aes_key = Password::with_theme(&ColorfulTheme::default())
+        .allow_empty_password(true)
+        .with_prompt("Please enter password")
+        .interact()
+        .unwrap();
+    let aes_key = if aes_key.is_empty() {
+        None
+    } else {
+        Some(aes_key.as_str())
+    };
+
 
     loop {
         let options = vec![
@@ -62,29 +78,30 @@ pub async fn menu() -> eyre::Result<()> {
 
         match selection {
             0 => {
-                let db = Database::new().await?;
+                let db = Database::new(aes_key).await?;
                 register_accounts(db, &config).await?;
             }
             1 => {
-                let db = Database::new().await?;
+                let mut db = read_db(aes_key).await?;
+                db.shuffle();
                 deposit_to_accounts(db, &config).await?;
             }
             2 => {
-                let mut db = read_or_create_db().await?;
+                let mut db = read_db(aes_key).await?;
                 db.shuffle();
 
                 opposing_bets(db, &config).await?;
             }
             3 => {
-                let db = read_or_create_db().await?;
+                let db = read_db(aes_key).await?;
                 check_and_display_stats(db, &config).await?;
             }
             4 => {
-                let db = read_or_create_db().await?;
+                let db = read_db(aes_key).await?;
                 sell_all_open_positions(db, &config).await?;
             }
             5 => {
-                let mut db = read_or_create_db().await?;
+                let mut db = read_db(aes_key).await?;
                 withdraw_for_all(&mut db, &config).await?;
             }
             6 => {

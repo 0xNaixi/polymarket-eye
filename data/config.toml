@@ -1,32 +1,32 @@
-# REGISTRATION #
+# REGISTRATION [注册]#
 REGISTRATION_SLEEP_RANGE = [
     4,
     10,
-] # sleep range between each registration (seconds)
-MOBILE_PROXIES = false # whether you're using mobile proxies or not
-SWAP_IP_LINK = "" # if you're using mobile proxies put the change ip link in here
+] # sleep range between each registration (seconds) [每次注册之间的休眠范围（秒）]
+MOBILE_PROXIES = false # whether you're using mobile proxies or not [是否使用代理]
+SWAP_IP_LINK = "" # if you're using mobile proxies put the change ip link in here [如果您使用代理，请将更改IP链接放在此处]
 
-# DEPOSITS #
-POLYGON_RPC_URL = "https://rpc.ankr.com/polygon"
-IGNORE_EXISTING_BALANCE = false # when using the deposits module whether to ignore current proxy wallet balance
+# DEPOSITS [充值] #
+POLYGON_RPC_URL = "https://rpc.ankr.com/polygon"  # polygon rpc url [rpc链接]
+IGNORE_EXISTING_BALANCE = false # when using the deposits module whether to ignore current proxy wallet balance or not [是否忽略当前代理钱包余额]
 USDC_AMOUNT_DEPOSIT_RANGE = [
-    10,
-    11,
-] # range from and to to be sent to a proxy wallet address
-DEPOSIT_SLEEP_RANGE = [13, 18] # delays made between each proxy wallet deposit
+    1,
+    3,
+] # range from and to be sent to a proxy wallet address [充值到代理钱包地址的usdc.e范围]
+DEPOSIT_SLEEP_RANGE = [13, 18] # delays made between each proxy wallet deposit [在每个代理钱包充值之间的延迟]
 
-# OPPOSING BETS #
-PRICE_DIFFERENCE_THRESHOLD = 0.5 # max price difference between outcomes, if price_difference > PRICE_DIFFERENCE_THRESHOLD the event will be skipped
-SPREAD_THRESHOLD = 0.01 # the minimum required price difference between ask and bid to execute trades, if spread > SPREAD_THRESHOLD the event will be skipped
-MIN_EVENT_VOLUME = 500000 # the minimum $USD volume of the event
+# OPPOSING BETS [对赌] #
+PRICE_DIFFERENCE_THRESHOLD = 0.5 # max price difference between outcomes, if price_difference > PRICE_DIFFERENCE_THRESHOLD the event will be skipped [结果之间的最大价格差异，如果price_difference > PRICE_DIFFERENCE_THRESHOLD，则将跳过事件]
+SPREAD_THRESHOLD = 0.01 # the minimum required price difference between ask and bid to execute trades, if spread > SPREAD_THRESHOLD the event will be skipped [执行交易所需的最小要求价格差异，如果spread > SPREAD_THRESHOLD，则将跳过事件]
+MIN_EVENT_VOLUME = 500000 # the minimum $USD volume of the event to be considered [要考虑的事件的最小$USD体积]
 BET_BALANCE_PERCENTAGE = [
     10,
     15,
-] # proxy wallet balance percentage range used for bet amount
-SELL_DELAY_RANGE = [20, 30] # delay range after which the position is sold
+] # proxy wallet balance percentage range used for bet amount [用于投注金额的代理钱包余额百分比范围]
+SELL_DELAY_RANGE = [20, 30] # delay range after which the position is sold  [卖出头寸后的延迟范围]
 BATCH_DELAY_RANGE = [
     5,
     20,
-] # bets are spawned in batches of 2 wallets, this delay is used to sleep between each batch before placing opposing bets
-CYCLE_COUNT = 2 # amount of betting cycles
-WITHDRAW_DELAY_RANGE = [20, 30] # sleep delay between each withdrawal
+] # bets are spawned in batches of 2 wallets, this delay is used to sleep between each batch before placing opposing bets [投注以2个钱包的批次生成，此延迟用于在放置对立投注之前在每个批次之间休眠]
+CYCLE_COUNT = 2 # amount of betting cycles  [投注周期数]
+WITHDRAW_DELAY_RANGE = [20, 30] # sleep delay between each withdrawal   [每次提款之间的睡眠延迟]
