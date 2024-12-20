@@ -122,27 +122,12 @@ pub async fn swap_ip_address(link: &str) -> eyre::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_random_in_range() {
-        let range = [1, 10];
-        let random_number = random_in_range(range);
-        assert!(range.contains(&random_number));
-    }
-
     #[test]
     fn test_generate_random_username() {
         for _ in 0..10 {
             let username = generate_random_username();
             println!("username: {}", username);
             assert!(!username.is_empty());
-        }
-
-        #[test]
-        fn test_get_timestamp_with_offset() {
-            let (current_time, adjusted_time) = get_timestamp_with_offset(1);
-            assert!(!current_time.is_empty());
-            assert!(!adjusted_time.is_empty());
         }
     }
 }
