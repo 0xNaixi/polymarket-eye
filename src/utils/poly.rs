@@ -48,6 +48,15 @@ where
     PROXY_FACTORY_ADDRESS.create2(salt, INIT_CODE_HASH)
 }
 
+pub fn get_proxy_wallet_address_from_address(wallet_address: &Address) -> Address {
+    let encoded_address = <sol! { address }>::abi_encode(wallet_address);
+    let salt = keccak256(encoded_address);
+    PROXY_FACTORY_ADDRESS.create2(salt, INIT_CODE_HASH)
+}
+
+
+
+
 sol! {
     #[derive(Debug)]
     struct CreateProxy {

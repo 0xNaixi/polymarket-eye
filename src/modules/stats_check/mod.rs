@@ -17,6 +17,7 @@ use tabled::{settings::Style, Table, Tabled};
 
 use crate::modules::registration::check_if_proxy_wallet_activated;
 use crate::modules::stats_check::scraping::scrape_users_last_activity_time;
+use crate::utils::poly::get_proxy_wallet_address_from_address;
 use crate::{
     config::Config,
     db::database::Database,
@@ -26,6 +27,7 @@ use crate::{
 mod scraping;
 
 const EXPORT_FILE_PATH: &str = "data/stats.csv";
+const EXPORT_ADDRESS_FILE_PATH: &str = "data/address_info.csv";
 #[derive(Tabled, Serialize)]
 struct UserStats {
     #[tabled(rename = "Proxy Address")]
@@ -64,6 +66,18 @@ struct UserStats {
     #[tabled(rename = "Last Activity Time")]
     #[serde(rename = "Last Activity Time")]
     last_activity_time: String,
+}
+
+
+#[derive(Tabled, Serialize)]
+struct AddressInfo {
+    #[tabled(rename = "Address")]
+    #[serde(rename = "Address")]
+    address: String,
+
+    #[tabled(rename = "Proxy Address")]
+    #[serde(rename = "Proxy Address")]
+    proxy_address: String,
 }
 
 
@@ -240,13 +254,16 @@ pub async fn check_and_display_stats(proxy_addresses: Vec<Address>, proxies: Vec
 
     println!("{table}");
 
-    export_stats_to_csv(&stats_entries)?;
+    export_stats_to_csv(&stats_entries, EXPORT_FILE_PATH)?;
 
     Ok(())
 }
 
-fn export_stats_to_csv(entries: &[UserStats]) -> eyre::Result<()> {
-    let export_file = File::create(EXPORT_FILE_PATH)?;
+fn export_stats_to_csv<T>(entries: &[T], path: &str) -> eyre::Result<()>
+where
+    T: serde::Serialize,
+{
+    let export_file = File::create(path)?;
 
     let mut writer = WriterBuilder::new()
         .has_headers(true)
@@ -259,6 +276,34 @@ fn export_stats_to_csv(entries: &[UserStats]) -> eyre::Result<()> {
     writer.flush()?;
 
     tracing::info!("Stats exported to {}", EXPORT_FILE_PATH);
+
+    Ok(())
+}
+
+
+pub async fn get_proxy_address_from_txt(addresses: Vec<String>) -> eyre::Result<()> {
+    let addresses: Vec<Address> = addresses
+        .into_iter()
+        .map(|address| address.parse().unwrap())
+        .collect();
+
+    let mut address_entries = vec![];
+    //遍历地址，获取proxy地址
+    for address in addresses {
+        let proxy_address = get_proxy_wallet_address_from_address(&address);
+        let entry = AddressInfo {
+            address: address.to_string(),
+            proxy_address: proxy_address.to_string(),
+        };
+        address_entries.push(entry);
+    }
+
+    let mut table = Table::new(&address_entries);
+    let table = table.with(Style::modern_rounded());
+
+    println!("{table}");
+
+    export_stats_to_csv(&address_entries, EXPORT_ADDRESS_FILE_PATH)?;
 
     Ok(())
 }

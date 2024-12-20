@@ -3,7 +3,7 @@ use super::{
     stats_check::check_and_display_stats,
 };
 use crate::db::constants::{ADDRESS_FILE_PATH, PROXY_ADDRESS_FILE_PATH};
-use crate::modules::stats_check::{check_and_display_stats_from_db, check_and_display_stats_from_text};
+use crate::modules::stats_check::{check_and_display_stats_from_db, check_and_display_stats_from_text, get_proxy_address_from_txt};
 use crate::{
     config::Config,
     db::database::Database,
@@ -137,7 +137,7 @@ pub async fn menu() -> eyre::Result<()> {
                     .interact()
                     .unwrap();
                 let data = read_data_from_txt(&file_path).await?;
-                check_and_display_stats_from_text(data, &config).await?;
+                get_proxy_address_from_txt(data).await?;
             }
             8 => {
                 return Ok(());
