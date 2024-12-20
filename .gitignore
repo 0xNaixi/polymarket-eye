@@ -27,3 +27,5 @@ logs
 out.txt
 
 .DS_Store
+
+data/*
