@@ -50,18 +50,42 @@ where
     rand::thread_rng().gen_range(inclusive_range)
 }
 
+// pub fn generate_random_username() -> String {
+//     let mut username: String = Username().fake();
+//     username = username.replace("_", "-");
+//
+//     let mut rng = thread_rng();
+//
+//     if rng.gen_bool(0.3) {
+//         let random_number: u16 = rng.gen_range(1..=999);
+//         format!("{}{}", username, random_number)
+//     } else {
+//         username
+//     }
+// }
+
 pub fn generate_random_username() -> String {
+    // 获取用户名，移除下划线和破折号
     let mut username: String = Username().fake();
-    username = username.replace("_", "-");
+    username = username.split('_').next().unwrap_or(&username).to_string();
+    username = username.replace("-", "");
 
-    let mut rng = thread_rng();
-
-    if rng.gen_bool(0.3) {
-        let random_number: u16 = rng.gen_range(1..=999);
-        format!("{}{}", username, random_number)
-    } else {
-        username
+    // 如果用户名太长，截取前10个字符
+    if username.len() > 10 {
+        username.truncate(10);
     }
+
+    // 如果用户名太短，添加随机字母直到达到最小长度
+    if username.len() < 5 {
+        let mut rng = thread_rng();
+        let needed_letters = 5 - username.len();
+        let random_letters: String = (0..needed_letters)
+            .map(|_| char::from(rng.gen_range(b'a'..=b'z')))
+            .collect();
+        username.push_str(&random_letters);
+    }
+
+    username
 }
 
 pub fn get_timestamp_with_offset(hours_to_add: i64) -> (String, String) {
@@ -89,7 +113,36 @@ pub async fn swap_ip_address(link: &str) -> eyre::Result<()> {
         None,
         |_| true,
     )
-    .await?;
+        .await?;
 
     Ok(())
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_random_in_range() {
+        let range = [1, 10];
+        let random_number = random_in_range(range);
+        assert!(range.contains(&random_number));
+    }
+
+    #[test]
+    fn test_generate_random_username() {
+        for _ in 0..10 {
+            let username = generate_random_username();
+            println!("username: {}", username);
+            assert!(!username.is_empty());
+        }
+
+        #[test]
+        fn test_get_timestamp_with_offset() {
+            let (current_time, adjusted_time) = get_timestamp_with_offset(1);
+            assert!(!current_time.is_empty());
+            assert!(!adjusted_time.is_empty());
+        }
+    }
 }

@@ -92,7 +92,7 @@ where
         &polymarket_nonce,
         &auth_header_value,
     )
-    .await?;
+        .await?;
 
     account.set_polymarket_session(&polymarket_session);
 
@@ -102,8 +102,8 @@ where
         &polymarket_session,
         proxy.as_ref(),
     )
-    .await?
-    .is_some();
+        .await?
+        .is_some();
 
     if !user_exists {
         let profile = create_profile(
@@ -113,7 +113,7 @@ where
             &polymarket_nonce,
             &polymarket_session,
         )
-        .await?;
+            .await?;
 
         let username = generate_random_username();
         let profile_id = profile.id;
@@ -133,7 +133,7 @@ where
             &polymarket_session,
             proxy.as_ref(),
         )
-        .await?;
+            .await?;
 
         tracing::info!("Updating username");
         update_username(
@@ -144,7 +144,7 @@ where
             &polymarket_session,
             None,
         )
-        .await?;
+            .await?;
     }
 
     let proxy_wallet_activated =
@@ -162,7 +162,7 @@ where
             &polymarket_session,
             None,
         )
-        .await?;
+            .await?;
 
         let tx_hash = wait_for_transaction_confirmation(
             &tx_id,
@@ -173,7 +173,7 @@ where
             None,
             None,
         )
-        .await?;
+            .await?;
 
         tracing::info!("Proxy wallet acitvated: {POLYGON_EXPLORER_TX_BASE_URL}{tx_hash}");
     }
@@ -192,7 +192,7 @@ where
             &polymarket_session,
             proxy.as_ref(),
         )
-        .await?;
+            .await?;
 
         let tx_hash = wait_for_transaction_confirmation(
             &tx_id,
@@ -203,7 +203,7 @@ where
             None,
             None,
         )
-        .await?;
+            .await?;
 
         tracing::info!("Approval succeded: {POLYGON_EXPLORER_TX_BASE_URL}{tx_hash}");
     }
@@ -229,7 +229,7 @@ pub async fn create_or_derive_api_key(
     Ok(response)
 }
 
-async fn check_if_proxy_wallet_activated<P, T>(
+pub async fn check_if_proxy_wallet_activated<P, T>(
     provider: Arc<P>,
     proxy_address: Address,
 ) -> eyre::Result<bool>

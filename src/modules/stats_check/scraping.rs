@@ -1,9 +1,15 @@
-use std::{future::Future, pin::Pin};
-
+use alloy::network::Ethereum;
+use alloy::primitives::Address;
+use alloy::providers::Provider;
+use alloy::transports::Transport;
 use reqwest::Proxy;
-
+use std::sync::Arc;
+use std::{future::Future, pin::Pin};
 use tokio::task::JoinSet;
 
+use crate::modules::registration::check_if_proxy_wallet_activated;
+use crate::polymarket::api::user::endpoints::get_user_last_activity_time;
+use crate::polymarket::api::user::schemas::UserActivityTime;
 use crate::{
     errors::custom::CustomError,
     polymarket::api::user::{
@@ -22,12 +28,12 @@ pub async fn scrape_executor<T>(
     addresses: Vec<String>,
     proxies: Vec<Option<Proxy>>,
     scraper: impl for<'t> Fn(
-            &'t str,
-            Option<&'t Proxy>,
-        ) -> Pin<Box<dyn Future<Output = Result<T, CustomError>> + Send + 't>>
-        + Send
-        + Copy
-        + 'static,
+        &'t str,
+        Option<&'t Proxy>,
+    ) -> Pin<Box<dyn Future<Output=Result<T, CustomError>> + Send + 't>>
+    + Send
+    + Copy
+    + 'static,
 ) -> Vec<(String, T)>
 where
     T: Send + 'static,
@@ -69,7 +75,7 @@ pub async fn scrape_open_positions(
     scrape_executor(addresses, proxies, |address, proxy| {
         Box::pin(get_user_positions(address, proxy))
     })
-    .await
+        .await
 }
 
 pub async fn scrape_users_volume(
@@ -79,7 +85,7 @@ pub async fn scrape_users_volume(
     scrape_executor(addresses, proxies, |address, proxy| {
         Box::pin(get_user_volume(address, proxy))
     })
-    .await
+        .await
 }
 
 pub async fn scrape_users_pnl(
@@ -89,7 +95,7 @@ pub async fn scrape_users_pnl(
     scrape_executor(addresses, proxies, |address, proxy| {
         Box::pin(get_user_pnl(address, proxy))
     })
-    .await
+        .await
 }
 
 pub async fn scrape_users_trade_count(
@@ -99,7 +105,7 @@ pub async fn scrape_users_trade_count(
     scrape_executor(addresses, proxies, |address, proxy| {
         Box::pin(get_user_trade_count(address, proxy))
     })
-    .await
+        .await
 }
 
 pub async fn scrape_users_open_pos_value(
@@ -109,5 +115,16 @@ pub async fn scrape_users_open_pos_value(
     scrape_executor(addresses, proxies, |address, proxy| {
         Box::pin(get_user_open_positions_value(address, proxy))
     })
-    .await
+        .await
+}
+
+
+pub async fn scrape_users_last_activity_time(
+    addresses: Vec<String>,
+    proxies: Vec<Option<Proxy>>,
+) -> Vec<(String, Vec<UserActivityTime>)> {
+    scrape_executor(addresses, proxies, |address, proxy| {
+        Box::pin(get_user_last_activity_time(address, proxy))
+    })
+        .await
 }

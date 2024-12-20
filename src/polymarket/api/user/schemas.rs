@@ -264,3 +264,9 @@ pub struct UserTradesResponseBody {
 pub struct UserOpenPositionsStats {
     pub value: f64,
 }
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UserActivityTime {
+    pub timestamp: u64,
+}

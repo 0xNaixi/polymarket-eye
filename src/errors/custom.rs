@@ -30,4 +30,7 @@ pub enum CustomError {
 
     #[error("Unexpected error: {0}")]
     Unexpected(#[from] Report),
+
+    #[error("Failed to parse address: {0}")]
+    ParseAddressError(String),
 }

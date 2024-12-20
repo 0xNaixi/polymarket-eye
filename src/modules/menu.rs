@@ -2,6 +2,8 @@ use super::{
     bets::opposing::opposing_bets, deposit::deposit_to_accounts, registration::register_accounts,
     stats_check::check_and_display_stats,
 };
+use crate::db::constants::{ADDRESS_FILE_PATH, PROXY_ADDRESS_FILE_PATH};
+use crate::modules::stats_check::{check_and_display_stats_from_db, check_and_display_stats_from_text};
 use crate::{
     config::Config,
     db::database::Database,
@@ -9,6 +11,7 @@ use crate::{
 };
 use colored::Colorize;
 use dialoguer::{theme::ColorfulTheme, Password, Select};
+
 const LOGO: &str = r#"
 
 ██████╗  ██████╗ ██╗  ██╗   ██╗███╗   ███╗ █████╗ ██████╗ ██╗  ██╗███████╗████████╗    ██████╗  ██████╗ ████████╗
@@ -35,10 +38,24 @@ pub async fn menu() -> eyre::Result<()> {
         match Database::read(password).await {
             Ok(db) => Ok(db),
             Err(e) => {
-                println!("{}", "✘ Failed to read database! (password is wrong?)".red());
-                Err(e)  // 直接返回错误，不创建新数据库
+                println!(
+                    "{}",
+                    "✘ Failed to read database! (password is wrong?)".red()
+                );
+                Err(e) // 直接返回错误，不创建新数据库
             }
         }
+    }
+
+    // 通过txt 读取数据（地址 一行一个）
+    async fn read_data_from_txt(file_path: &str) -> eyre::Result<Vec<String>> {
+        let content = tokio::fs::read_to_string(file_path).await?;
+        let lines: Vec<String> = content
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .map(String::from)
+            .collect();
+        Ok(lines)
     }
 
     let config = Config::read_default().await;
@@ -57,15 +74,16 @@ pub async fn menu() -> eyre::Result<()> {
         Some(aes_key.as_str())
     };
 
-
     loop {
         let options = vec![
             "Accounts registration",
+            "Proxy wallets stats check from txt",
+            "Proxy wallets stats check",
             "USDC deposit",
             "Opposing bets",
-            "Proxy wallets stats check",
             "Sell all open positions",
             "Withdraw",
+            "Get proxy address from txt",
             "Exit",
         ];
 
@@ -82,29 +100,46 @@ pub async fn menu() -> eyre::Result<()> {
                 register_accounts(db, &config).await?;
             }
             1 => {
+                let file_path: String = dialoguer::Input::with_theme(&ColorfulTheme::default())
+                    .with_prompt("Please enter file path")
+                    .default(PROXY_ADDRESS_FILE_PATH.to_string())
+                    .interact()
+                    .unwrap();
+                let data = read_data_from_txt(&file_path).await?;
+                check_and_display_stats_from_text(data, &config).await?;
+            }
+            2 => {
+                let db = read_db(aes_key).await?;
+                check_and_display_stats_from_db(db, &config).await?;
+            }
+            3 => {
                 let mut db = read_db(aes_key).await?;
                 db.shuffle();
                 deposit_to_accounts(db, &config).await?;
             }
-            2 => {
+            4 => {
                 let mut db = read_db(aes_key).await?;
                 db.shuffle();
-
                 opposing_bets(db, &config).await?;
             }
-            3 => {
-                let db = read_db(aes_key).await?;
-                check_and_display_stats(db, &config).await?;
-            }
-            4 => {
+            5 => {
                 let db = read_db(aes_key).await?;
                 sell_all_open_positions(db, &config).await?;
             }
-            5 => {
+            6 => {
                 let mut db = read_db(aes_key).await?;
                 withdraw_for_all(&mut db, &config).await?;
             }
-            6 => {
+            7 => {
+                let file_path: String = dialoguer::Input::with_theme(&ColorfulTheme::default())
+                    .with_prompt("Please enter file path")
+                    .default(ADDRESS_FILE_PATH.to_string())
+                    .interact()
+                    .unwrap();
+                let data = read_data_from_txt(&file_path).await?;
+                check_and_display_stats_from_text(data, &config).await?;
+            }
+            8 => {
                 return Ok(());
             }
             _ => tracing::error!("Invalid selection"),

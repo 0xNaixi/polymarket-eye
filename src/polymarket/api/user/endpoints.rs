@@ -15,11 +15,7 @@ use crate::{
     },
 };
 
-use super::schemas::{
-    CreateUserRequestBody, CreateUserResponseBody, GetAuthNonceResponseBody, LoginReponseBody,
-    UpdatePreferencesRequestBody, UpdateUsernameRequestBody, User, UserOpenPositionsStats,
-    UserPnlStats, UserPosition, UserTradesResponseBody, UserVolumeStats,
-};
+use super::schemas::{CreateUserRequestBody, CreateUserResponseBody, GetAuthNonceResponseBody, LoginReponseBody, UpdatePreferencesRequestBody, UpdateUsernameRequestBody, User, UserActivityTime, UserOpenPositionsStats, UserPnlStats, UserPosition, UserTradesResponseBody, UserVolumeStats};
 
 pub async fn get_auth_nonce(proxy: Option<&Proxy>) -> Result<(String, String), CustomError> {
     let request_params = RequestParams {
@@ -37,7 +33,7 @@ pub async fn get_auth_nonce(proxy: Option<&Proxy>) -> Result<(String, String), C
         None,
         |_| true,
     )
-    .await?;
+        .await?;
 
     let polymarket_nonce = response
         .headers
@@ -66,9 +62,9 @@ pub async fn login(
         (AUTHORIZATION, auth_header_value),
         (COOKIE, &cookie_header_value),
     ]
-    .into_iter()
-    .map(|(name, value)| (name, HeaderValue::from_str(value).unwrap()))
-    .collect::<HeaderMap>();
+        .into_iter()
+        .map(|(name, value)| (name, HeaderValue::from_str(value).unwrap()))
+        .collect::<HeaderMap>();
 
     let request_params = RequestParams {
         url: "https://gamma-api.polymarket.com/login",
@@ -85,7 +81,7 @@ pub async fn login(
         None,
         |_| true,
     )
-    .await?;
+        .await?;
 
     let polymarket_session = response
         .headers
@@ -123,7 +119,7 @@ pub async fn create_profile<S: Signer>(
         None,
         |_| true,
     )
-    .await?;
+        .await?;
 
     Ok(response.body.unwrap())
 }
@@ -157,7 +153,7 @@ pub async fn update_username(
         None,
         |_| true,
     )
-    .await?;
+        .await?;
 
     Ok(())
 }
@@ -193,7 +189,7 @@ pub async fn update_preferences(
         None,
         |_| true,
     )
-    .await?;
+        .await?;
 
     Ok(())
 }
@@ -221,7 +217,7 @@ pub async fn get_user(
         None,
         |_| true,
     )
-    .await?;
+        .await?;
 
     let user = response
         .body
@@ -255,7 +251,7 @@ pub async fn get_user_positions(
         None,
         |_| true,
     )
-    .await?;
+        .await?;
 
     Ok(response.body.unwrap())
 }
@@ -269,9 +265,9 @@ pub async fn get_user_volume(
         ("limit", "1"),
         ("address", proxy_wallet_address),
     ]
-    .iter()
-    .map(|(arg, value)| (*arg, *value))
-    .collect();
+        .iter()
+        .map(|(arg, value)| (*arg, *value))
+        .collect();
 
     let request_params = RequestParams {
         url: "https://lb-api.polymarket.com/volume",
@@ -288,7 +284,7 @@ pub async fn get_user_volume(
         None,
         |_| true,
     )
-    .await?;
+        .await?;
 
     Ok(response.body.unwrap())
 }
@@ -302,9 +298,9 @@ pub async fn get_user_pnl(
         ("limit", "1"),
         ("address", proxy_wallet_address),
     ]
-    .iter()
-    .map(|(arg, value)| (*arg, *value))
-    .collect();
+        .iter()
+        .map(|(arg, value)| (*arg, *value))
+        .collect();
 
     let request_params = RequestParams {
         url: "https://lb-api.polymarket.com/profit",
@@ -321,7 +317,7 @@ pub async fn get_user_pnl(
         None,
         |_| true,
     )
-    .await?;
+        .await?;
 
     Ok(response.body.unwrap())
 }
@@ -350,7 +346,7 @@ pub async fn get_user_trade_count(
         None,
         |_| true,
     )
-    .await?;
+        .await?;
 
     Ok(response.body.unwrap())
 }
@@ -379,7 +375,40 @@ pub async fn get_user_open_positions_value(
         None,
         |_| true,
     )
-    .await?;
+        .await?;
+
+    Ok(response.body.unwrap())
+}
+
+pub async fn get_user_last_activity_time(
+    proxy_wallet_address: &str,
+    proxy: Option<&Proxy>,
+) -> Result<Vec<UserActivityTime>, CustomError> {
+    let query_args = [
+        ("user", proxy_wallet_address),
+        ("limit", "10"),
+        ("offset", "0"),
+    ]
+        .iter()
+        .map(|(arg, value)| (*arg, *value))
+        .collect();
+
+    let request_params = RequestParams {
+        url: "https://data-api.polymarket.com/activity",
+        method: Method::GET,
+        body: None::<serde_json::Value>,
+        query_args: Some(query_args),
+    };
+
+    let response = send_http_request_with_retries::<Vec<UserActivityTime>>(
+        &request_params,
+        None,
+        proxy,
+        None,
+        None,
+        |_| true,
+    )
+        .await?;
 
     Ok(response.body.unwrap())
 }
