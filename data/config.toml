@@ -3,6 +3,10 @@ REGISTRATION_SLEEP_RANGE = [
     4,
     10,
 ] # sleep range between each registration (seconds) [每次注册之间的休眠范围（秒）]
+USER_NAME_LENGTH_RANGE = [
+    8,
+    12,
+] # username length range [用户名长度范围 保证最终的用户名长度在8-12之间]
 MOBILE_PROXIES = false # whether you're using mobile proxies or not [是否使用代理]
 SWAP_IP_LINK = "" # if you're using mobile proxies put the change ip link in here [如果您使用代理，请将更改IP链接放在此处]
 

@@ -7,6 +7,7 @@ const CONFIG_FILE_PATH: &str = "data/config.toml";
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub struct Config {
     pub registration_sleep_range: [u64; 2],
+    pub user_name_length_range: [usize; 2],
     pub mobile_proxies: bool,
     pub swap_ip_link: String,
     pub polygon_rpc_url: String,

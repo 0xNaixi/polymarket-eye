@@ -115,7 +115,7 @@ where
         )
             .await?;
 
-        let username = generate_random_username();
+        let username = generate_random_username(config.user_name_length_range);
         let profile_id = profile.id;
         let preferences_id = profile.users[0].preferences.as_ref().unwrap()[0]
             .id

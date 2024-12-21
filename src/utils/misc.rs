@@ -1,4 +1,5 @@
 use chrono::{DateTime, Duration, Utc};
+use fake::faker::name::en::Name;
 use fake::{faker::internet::en::Username, Fake};
 use indicatif::{ProgressBar, ProgressStyle};
 use rand::{thread_rng, Rng};
@@ -64,21 +65,32 @@ where
 //     }
 // }
 
-pub fn generate_random_username() -> String {
-    // 获取用户名，移除下划线和破折号
-    let mut username: String = Username().fake();
-    username = username.split('_').next().unwrap_or(&username).to_string();
-    username = username.replace("-", "");
+pub fn generate_random_username(user_name_length_range: [usize; 2]) -> String {
+    let length_range = random_in_range(user_name_length_range);
+    let mut rng = thread_rng();
 
-    // 如果用户名太长，截取前10个字符
-    if username.len() > 10 {
-        username.truncate(10);
+    // 随机选择使用 name 或 Username
+    let mut username: String = if rng.gen_bool(0.5) {
+        Name().fake()
+    } else {
+        Username().fake()
+    };
+
+    // 移除所有特殊字符，只保留字母和数字
+    username = username
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .collect::<String>()
+        .to_lowercase();
+
+    // 如果用户名太长，截取到最大长度
+    if username.len() > length_range {
+        username.truncate(length_range);
     }
 
     // 如果用户名太短，添加随机字母直到达到最小长度
-    if username.len() < 5 {
-        let mut rng = thread_rng();
-        let needed_letters = 5 - username.len();
+    if username.len() < length_range {
+        let needed_letters = length_range - username.len();
         let random_letters: String = (0..needed_letters)
             .map(|_| char::from(rng.gen_range(b'a'..=b'z')))
             .collect();
@@ -125,7 +137,7 @@ mod tests {
     #[test]
     fn test_generate_random_username() {
         for _ in 0..10 {
-            let username = generate_random_username();
+            let username = generate_random_username([8usize, 12usize]);
             println!("username: {}", username);
             assert!(!username.is_empty());
         }
