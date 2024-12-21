@@ -7,6 +7,8 @@ use alloy::{
 use chrono::{FixedOffset, LocalResult, TimeZone, Utc};
 use csv::WriterBuilder;
 use itertools::Itertools;
+use rand::prelude::SliceRandom;
+use rand::thread_rng;
 use reqwest::{Proxy, Url};
 use scraping::{
     scrape_open_positions, scrape_users_open_pos_value, scrape_users_pnl, scrape_users_trade_count,
@@ -15,8 +17,10 @@ use scraping::{
 use serde::Serialize;
 use tabled::{settings::Style, Table, Tabled};
 
-use crate::modules::registration::check_if_proxy_wallet_activated;
+use crate::db::constants::PROXIES_FILE_PATH;
+use crate::modules::registration::{check_if_proxy_wallet_activated, retry_check_activation};
 use crate::modules::stats_check::scraping::scrape_users_last_activity_time;
+use crate::utils::files::read_file_lines;
 use crate::utils::poly::get_proxy_wallet_address_from_address;
 use crate::{
     config::Config,
@@ -93,14 +97,26 @@ pub async fn check_and_display_stats_from_db(db: Database, config: &Config) -> e
 
 
 pub async fn check_and_display_stats_from_text(proxy_addresses: Vec<String>, config: &Config) -> eyre::Result<()> {
+    tracing::info!("Processing {} addresses", proxy_addresses.len());
     let proxy_addresses: Vec<Address> = proxy_addresses
         .into_iter()
         .map(|address| address.parse().unwrap())
         .collect();
-
-    //生成同样数量多的 空的 proxy
-    let proxies = vec![None; proxy_addresses.len()];
-    check_and_display_stats(proxy_addresses, proxies, config).await?;
+    let proxies = read_file_lines(PROXIES_FILE_PATH).await.unwrap();
+    tracing::info!("Loaded {} proxies from file", proxies.len());
+    // 确保有可用的代理
+    if proxies.is_empty() {
+        return Err(eyre::eyre!("No proxies available in file"));
+    }
+    //遍历 proxy_addresses 为每一个地址生成一个随机的 proxy
+    let mut use_proxies = Vec::with_capacity(proxy_addresses.len());
+    for _ in 0..proxy_addresses.len() {
+        // 随机 获取
+        let random_proxy = proxies.choose(&mut thread_rng()).unwrap();
+        let proxy = Proxy::all(random_proxy)?;
+        use_proxies.push(Some(proxy));
+    }
+    check_and_display_stats(proxy_addresses, use_proxies, config).await?;
     Ok(())
 }
 
@@ -139,10 +155,9 @@ pub async fn check_and_display_stats(proxy_addresses: Vec<Address>, proxies: Vec
     let mut stats_entries = vec![];
 
     for (address, balance) in addresses.iter().zip(balances.iter()) {
-        // check_if_proxy_wallet_activated(provider.clone(), address).await?;
         let balance_in_usdce = format_units(*balance, 6).unwrap_or_else(|_| "0".to_string());
 
-        let is_registered = check_if_proxy_wallet_activated(provider.clone(), address.parse().unwrap()).await?;
+        let is_registered = retry_check_activation(provider.clone(), address.parse().unwrap(), 60).await?;
 
         let open_positions_count = open_positions_stats
             .iter()

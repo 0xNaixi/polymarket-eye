@@ -1,14 +1,3 @@
-use std::{str::FromStr, sync::Arc};
-
-use alloy::{
-    network::Ethereum,
-    primitives::{bytes, Address, Bytes},
-    providers::{Provider, ProviderBuilder},
-    signers::local::PrivateKeySigner,
-    transports::Transport,
-};
-use reqwest::{Proxy, StatusCode, Url};
-
 use crate::{
     config::Config,
     db::{account::Account, database::Database},
@@ -33,6 +22,17 @@ use crate::{
         poly::sign_enable_trading_message,
     },
 };
+use alloy::{
+    network::Ethereum,
+    primitives::{bytes, Address, Bytes},
+    providers::{Provider, ProviderBuilder},
+    signers::local::PrivateKeySigner,
+    transports::Transport,
+};
+use reqwest::{Proxy, StatusCode, Url};
+use std::time::Duration;
+use std::{str::FromStr, sync::Arc};
+use tokio::time::sleep;
 
 const ZERO_BYTES: Bytes = bytes!("");
 
@@ -245,4 +245,37 @@ where
     };
 
     Ok(exists)
+}
+
+pub async fn retry_check_activation<P, T>(
+    provider: Arc<P>,
+    address: Address,
+    max_attempts: u32,
+) -> eyre::Result<bool>
+where
+    P: Provider<T, Ethereum>,
+    T: Transport + Clone,
+{
+    for attempt in 1..=max_attempts {
+        match check_if_proxy_wallet_activated(provider.clone(), address).await {
+            Ok(result) => return Ok(result),
+            Err(e) => {
+                if attempt == max_attempts {
+                    return Err(eyre::eyre!("Failed after {} attempts: {}", max_attempts, e));
+                }
+
+                tracing::warn!(
+                    "Attempt {}/{} failed for address {}: {}. Retrying...",
+                    attempt,
+                    max_attempts,
+                    address,
+                    e
+                );
+
+                sleep(Duration::from_secs(1)).await;
+            }
+        }
+    }
+
+    Err(eyre::eyre!("Unexpected error in retry logic"))
 }
