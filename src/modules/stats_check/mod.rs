@@ -6,7 +6,7 @@ use alloy::{
 };
 use chrono::{FixedOffset, LocalResult, TimeZone, Utc};
 use csv::WriterBuilder;
-use itertools::Itertools;
+use itertools::{izip, Itertools};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use reqwest::{Proxy, Url};
@@ -20,6 +20,7 @@ use tabled::{settings::Style, Table, Tabled};
 use crate::db::constants::PROXIES_FILE_PATH;
 use crate::modules::registration::{check_if_proxy_wallet_activated, retry_check_activation};
 use crate::modules::stats_check::scraping::scrape_users_last_activity_time;
+use crate::onchain::multicall::multicall_get_owners;
 use crate::utils::files::read_file_lines;
 use crate::utils::poly::get_proxy_wallet_address_from_address;
 use crate::{
@@ -34,9 +35,13 @@ const EXPORT_FILE_PATH: &str = "data/stats.csv";
 const EXPORT_ADDRESS_FILE_PATH: &str = "data/address_info.csv";
 #[derive(Tabled, Serialize)]
 struct UserStats {
+    #[tabled(rename = "Wallet Address")]
+    #[serde(rename = "Wallet Address")]
+    wallet_address: String,
+
     #[tabled(rename = "Proxy Address")]
     #[serde(rename = "Proxy Address")]
-    address: String,
+    proxy_address: String,
 
     #[tabled(rename = "USDC.e Balance")]
     #[serde(rename = "USDC.e Balance")]
@@ -131,7 +136,9 @@ pub async fn check_and_display_stats(proxy_addresses: Vec<Address>, proxies: Vec
 
     let balances = multicall_balance_of(&proxy_addresses, Token::USDCE, provider.clone()).await?;
 
-    let addresses = proxy_addresses
+    let owners = multicall_get_owners(&proxy_addresses, provider.clone()).await?;
+
+    let proxy_addresses_string = proxy_addresses
         .into_iter()
         .map(|addr| addr.to_string())
         .collect_vec();
@@ -144,20 +151,24 @@ pub async fn check_and_display_stats(proxy_addresses: Vec<Address>, proxies: Vec
         users_open_pos_value_stats,
         users_last_activity_time_stats,
     ) = tokio::join!(
-        scrape_open_positions(addresses.clone(), proxies.clone()),
-        scrape_users_volume(addresses.clone(), proxies.clone()),
-        scrape_users_pnl(addresses.clone(), proxies.clone()),
-        scrape_users_trade_count(addresses.clone(), proxies.clone()),
-        scrape_users_open_pos_value(addresses.clone(), proxies.clone()),
-        scrape_users_last_activity_time(addresses.clone(), proxies.clone())
+        scrape_open_positions(proxy_addresses_string.clone(), proxies.clone()),
+        scrape_users_volume(proxy_addresses_string.clone(), proxies.clone()),
+        scrape_users_pnl(proxy_addresses_string.clone(), proxies.clone()),
+        scrape_users_trade_count(proxy_addresses_string.clone(), proxies.clone()),
+        scrape_users_open_pos_value(proxy_addresses_string.clone(), proxies.clone()),
+        scrape_users_last_activity_time(proxy_addresses_string.clone(), proxies.clone())
     );
 
     let mut stats_entries = vec![];
 
-    for (address, balance) in addresses.iter().zip(balances.iter()) {
+    for (address, balance, owners) in izip!(
+        proxy_addresses_string.iter(),
+        balances.iter(),
+        owners.iter())
+    {
         let balance_in_usdce = format_units(*balance, 6).unwrap_or_else(|_| "0".to_string());
 
-        let is_registered = retry_check_activation(provider.clone(), address.parse().unwrap(), 60).await?;
+        let wallet_owners = owners.clone();
 
         let open_positions_count = open_positions_stats
             .iter()
@@ -213,14 +224,18 @@ pub async fn check_and_display_stats(proxy_addresses: Vec<Address>, proxies: Vec
         };
 
         let entry = UserStats {
-            address: address.to_string(),
+            wallet_address: wallet_owners
+                .iter()
+                .map(|addr| addr.to_string())  // 或者 addr.to_string()
+                .join("\n"),
+            proxy_address: address.to_string(),
             balance: balance_in_usdce,
             open_positions_count,
             open_positions_value,
             volume: user_volume,
             pnl: user_pnl,
             trade_count,
-            is_registered,
+            is_registered: wallet_owners.len() > 0,
             last_activity_time: last_activity_text,
         };
 
@@ -251,7 +266,8 @@ pub async fn check_and_display_stats(proxy_addresses: Vec<Address>, proxies: Vec
     let total_registered = stats_entries.iter().filter(|entry| entry.is_registered).count();
 
     let total_entry = UserStats {
-        address: format!("Total (Registered: {}/{})", total_registered, addresses.len()),
+        wallet_address: "Total".to_string(),
+        proxy_address: format!("Registered: {}/{}", total_registered, proxy_addresses_string.len()),
         balance: format!("{:.2}", total_balance),
         open_positions_count: total_open_positions_count,
         open_positions_value: total_open_positions_value,

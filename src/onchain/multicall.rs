@@ -11,17 +11,17 @@ use alloy::{
 };
 use itertools::Itertools;
 
+use super::{
+    client::IERC20::{allowanceCall, balanceOfCall},
+    constants::MULTICALL_CONTRACT_ADDRESS,
+    types::token::Token,
+};
+use crate::onchain::multicall::GnosisSafeL2::getOwnersCall;
 use crate::{
     onchain::constants::EXPECTED_CHECK_APPROVALS_RESULT,
     polymarket::api::relayer::constants::{
         CONDITIONAL_TOKENS_CONTRACT_ADDRESS, UCHILD_ERC20_PROXY_CONTRACT_ADDRESS,
     },
-};
-
-use super::{
-    client::IERC20::{allowanceCall, balanceOfCall},
-    constants::MULTICALL_CONTRACT_ADDRESS,
-    types::token::Token,
 };
 
 sol! {
@@ -44,6 +44,15 @@ sol! {
     }
 
     function isApprovedForAll(address owner, address operator) external view returns (bool);
+}
+
+sol! {
+    #[sol(rpc)]
+    #[derive(Debug, PartialEq, Eq)]
+    contract GnosisSafeL2 {
+        function getOwners() external view returns (address[]);
+        function isOwner(address owner) external view returns (bool);
+    }
 }
 
 const CTF_EXCHANGE_CONTRACT_ADDRESS: Address = address!("4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E");
@@ -88,6 +97,44 @@ where
     Ok(result)
 }
 
+
+pub async fn multicall_get_owners<P, T>(
+    contract_addresses: &[Address],
+    provider: Arc<P>,
+) -> eyre::Result<Vec<Vec<Address>>>
+where
+    P: Provider<T, Ethereum>,
+    T: Transport + Clone,
+{
+    // 使用定义好的接口来编码调用
+    let get_owners_calldata = getOwnersCall::new(()).abi_encode();
+
+    // 准备 multicall 调用
+    let calls = contract_addresses
+        .iter()
+        .map(|address| Call3 {
+            target: *address,
+            allowFailure: false,
+            callData: get_owners_calldata.clone().into(),
+        })
+        .collect_vec();
+
+    let multicall_instance = Multicall3::new(MULTICALL_CONTRACT_ADDRESS, provider);
+    let results = multicall_instance
+        .aggregate3(calls)
+        .call()
+        .await?
+        .returnData
+        .iter()
+        .map(|owners| {
+            <sol! { address[] }>::abi_decode(&owners.returnData, false)
+                .unwrap_or_default()
+        })
+        .collect::<Vec<_>>();
+    Ok(results)
+}
+
+
 pub async fn check_token_approvals<P, T>(
     provider: Arc<P>,
     wallet_address: Address,
@@ -131,13 +178,13 @@ where
                 .abi_encode(),
         ),
     ]
-    .into_iter()
-    .map(|(address, calldata)| Call3 {
-        target: address,
-        allowFailure: false,
-        callData: calldata.into(),
-    })
-    .collect_vec();
+        .into_iter()
+        .map(|(address, calldata)| Call3 {
+            target: address,
+            allowFailure: false,
+            callData: calldata.into(),
+        })
+        .collect_vec();
 
     let result = multicall_instance
         .aggregate3(calls)
